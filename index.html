@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FFXI Progression Tracker v6 -- Dual Profile</title>
+<!--
+  FFXI Progression Tracker v6
+  Profiles: Scribble (GEO/BRD) + Ragelog (COR)
+  Storage key: ffxi_v6
+  Reset: localStorage.removeItem('ffxi_v6') in browser console
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Exo+2:wght@400;500;600;700&display=swap');
+:root{
+  --bg-deep:#0a0c10;--bg-panel:#0f1218;--bg-card:#141820;--bg-hover:#1c2230;
+  --border:#1e2535;--border-bright:#2a3550;
+  --gold:#c8a84b;--gold-dim:#7a6430;--gold-glow:rgba(200,168,75,0.15);
+  --cyan:#4ab8c8;--cyan-dim:#2a6878;--green:#4ac88a;--green-dim:#2a6845;
+  --red:#c84a4a;--red-dim:#7a2a2a;--purple:#8a4ac8;--orange:#e8853a;
+  --text-primary:#f0e8d8;--text-secondary:#90a8c0;--text-muted:#556070;
+}
+.theme-midnight{--bg-deep:#050810;--bg-panel:#080d18;--bg-card:#0c1220;--bg-hover:#101828;--border:#162030;--border-bright:#203050;--gold:#60c8f0;--gold-dim:#2a6890;--gold-glow:rgba(96,200,240,0.15);--text-primary:#ffffff;--text-secondary:#a0c0e0;--text-muted:#506080;}
+.theme-parchment{--bg-deep:#f5f0e8;--bg-panel:#ede8dc;--bg-card:#e5dfd0;--bg-hover:#ddd8c8;--border:#c8c0a8;--border-bright:#b0a890;--gold:#7a4a10;--gold-dim:#a06820;--gold-glow:rgba(122,74,16,0.12);--cyan:#2a6878;--cyan-dim:#4a90a8;--green:#2a6838;--green-dim:#4a9060;--red:#883020;--red-dim:#b05030;--orange:#a05018;--text-primary:#2a2018;--text-secondary:#5a4830;--text-muted:#8a7860;}
+.theme-teal{--bg-deep:#060d0c;--bg-panel:#0a1512;--bg-card:#0e1c18;--bg-hover:#122420;--border:#163028;--border-bright:#204838;--gold:#40d8a8;--gold-dim:#207850;--gold-glow:rgba(64,216,168,0.15);--cyan:#60e8c0;--cyan-dim:#308860;--green:#80f0a0;--green-dim:#3a8050;--text-primary:#e8f8f0;--text-secondary:#80c0a8;--text-muted:#406850;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Exo 2',sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;font-size:16px;line-height:1.5;transition:background .3s,color .3s;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(200,168,75,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,75,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:0 20px 70px;}
+
+/* HEADER */
+.header{padding:22px 0 16px;border-bottom:1px solid var(--border);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.header-left h1{font-family:'Cinzel',serif;font-size:21px;font-weight:700;color:var(--gold);letter-spacing:.08em;text-shadow:0 0 30px var(--gold-glow);}
+.header-left p{font-size:12px;color:var(--text-muted);letter-spacing:.05em;margin-top:2px;}
+.header-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+
+/* PROFILE SWITCHER */
+.profile-switcher{display:flex;gap:2px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:3px;}
+.profile-btn{padding:5px 14px;border-radius:3px;border:none;background:none;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--text-muted);cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.profile-btn:hover{color:var(--text-primary);}
+.profile-btn.active{background:var(--bg-panel);border:1px solid var(--border-bright);color:var(--gold);}
+.profile-job{font-size:10px;color:var(--text-muted);display:block;margin-top:1px;font-weight:400;letter-spacing:.05em;}
+
+/* THEME */
+.theme-switcher{display:flex;gap:5px;align-items:center;}
+.theme-label{font-size:10px;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;}
+.theme-btn{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .2s;}
+.theme-btn:hover{transform:scale(1.15);}
+.theme-btn.active{border-color:var(--text-primary);}
+.theme-dark{background:linear-gradient(135deg,#0a0c10 50%,#c8a84b 50%);}
+.theme-mid{background:linear-gradient(135deg,#080d18 50%,#60c8f0 50%);}
+.theme-parch{background:linear-gradient(135deg,#f5f0e8 50%,#7a4a10 50%);}
+.theme-tl{background:linear-gradient(135deg,#060d0c 50%,#40d8a8 50%);}
+
+/* NAV */
+.nav-tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:2px solid var(--border);flex-wrap:wrap;}
+.nav-tab{padding:9px 16px;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--text-secondary);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-bottom:-2px;}
+.nav-tab:hover{color:var(--text-primary);}
+.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.nav-tab.disabled{opacity:.4;cursor:not-allowed;}
+.nav-tab.urgent{color:var(--red)!important;border-bottom-color:var(--red)!important;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
+
+/* LAYOUT */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:1000px){.grid-2{grid-template-columns:1fr;}}
+.section-gap{margin-bottom:16px;}
+.panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:4px;padding:18px;}
+.panel-title{font-family:'Cinzel',serif;font-size:11px;font-weight:600;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.panel-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--gold-dim),transparent);}
+
+/* BARS */
+.bar-track{height:7px;background:var(--bg-card);border-radius:3px;overflow:hidden;border:1px solid var(--border);}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.bar-orange{background:linear-gradient(90deg,var(--gold-dim),var(--orange));}
+.bar-cyan{background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));}
+.bar-green{background:linear-gradient(90deg,var(--green-dim),var(--green));}
+.bar-purple{background:linear-gradient(90deg,#5a3080,var(--purple));}
+.bar-gold{background:linear-gradient(90deg,var(--gold-dim),var(--gold));}
+.bar-red{background:linear-gradient(90deg,var(--red-dim),var(--red));}
+.bar-gil{background:linear-gradient(90deg,#5a4010,#e8c040);}
+.bar-cor{background:linear-gradient(90deg,#802010,#e84010);}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:11px 13px;}
+.stat-label{font-size:10px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;}
+.stat-value{font-family:'Cinzel',serif;font-size:19px;color:var(--gold);font-weight:600;line-height:1.2;}
+.stat-value.cyan{color:var(--cyan);}.stat-value.green{color:var(--green);}.stat-value.orange{color:var(--orange);}.stat-value.red{color:var(--red);}
+.stat-sub{font-size:10px;color:var(--text-muted);margin-top:2px;}
+.bl{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:4px;}
+
+/* CHECKLIST */
+.checklist{display:flex;flex-direction:column;gap:5px;}
+.check-item{display:flex;align-items:center;gap:9px;padding:8px 11px;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;user-select:none;}
+.check-item:hover{border-color:var(--border-bright);background:var(--bg-hover);}
+.check-item.done{opacity:.35;}
+.check-item.done .check-name{text-decoration:line-through;color:var(--text-muted);}
+.checkbox{width:16px;height:16px;border-radius:2px;border:1px solid var(--border-bright);background:var(--bg-deep);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.checkbox.checked{background:var(--green);border-color:var(--green);}
+.check-name{flex:1;font-size:13px;font-weight:500;}
+.check-note{font-size:11px;color:var(--text-muted);}
+.check-source{font-size:10px;color:var(--text-muted);background:var(--bg-deep);border-radius:2px;padding:1px 5px;border:1px solid var(--border);white-space:nowrap;}
+.check-jobs{font-size:10px;color:var(--cyan);background:rgba(74,184,200,.08);border:1px solid var(--cyan-dim);border-radius:2px;padding:1px 5px;white-space:nowrap;flex-shrink:0;}
+.tier-badge{font-size:9px;padding:2px 4px;border-radius:2px;font-weight:700;letter-spacing:.05em;border:1px solid;flex-shrink:0;}
+.tier-event{background:rgba(232,133,58,.1);border-color:#804a20;color:var(--orange);}
+.tier-mid{background:rgba(74,184,200,.1);border-color:var(--cyan-dim);color:var(--cyan);}
+.tier-max{background:rgba(200,168,75,.1);border-color:var(--gold-dim);color:var(--gold);}
+.tier-luopan{background:rgba(138,74,200,.1);border-color:#5a3080;color:#a870e8;}
+.tier-shared{background:rgba(74,184,200,.08);border-color:var(--cyan-dim);color:var(--cyan);}
+.tier-cor{background:rgba(232,64,16,.1);border-color:#802010;color:#e84010;}
+.tier-key{background:rgba(200,168,75,.15);border-color:var(--gold-dim);color:var(--gold);}
+
+/* SUB-TABS */
+.sub-tabs{display:flex;gap:2px;margin-bottom:13px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.sub-tab{padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--text-secondary);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;text-transform:uppercase;transition:all .2s;}
+.sub-tab:hover{color:var(--text-primary);}
+.sub-tab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+
+/* SPELL GRID */
+.spell-section-label{font-size:10px;letter-spacing:.12em;color:var(--text-muted);text-transform:uppercase;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border);}
+.spell-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:5px;}
+.spell-item{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .15s;user-select:none;}
+.spell-item:hover{border-color:var(--border-bright);}
+.spell-item.owned{opacity:.35;}
+.spell-item.owned .spell-name{text-decoration:line-through;color:var(--text-muted);}
+.spell-dot{width:8px;height:8px;border-radius:50%;border:1px solid;flex-shrink:0;}
+.spell-name{flex:1;font-size:13px;font-weight:500;}
+.spell-lvl{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+
+/* IMPRIMATUR */
+.imp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px;}
+.imp-cell{aspect-ratio:1;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;transition:all .15s;}
+.imp-cell.available{background:rgba(74,184,200,.15);border-color:var(--cyan);color:var(--cyan);}
+.imp-cell.spent{background:rgba(200,74,74,.1);border-color:#603030;color:#804040;}
+
+/* COALITION */
+.coal-table{width:100%;border-collapse:collapse;font-size:13px;}
+.coal-table th{text-align:left;padding:7px 9px;font-size:10px;letter-spacing:.1em;color:var(--text-muted);border-bottom:1px solid var(--border);text-transform:uppercase;font-weight:700;}
+.coal-table td{padding:7px 9px;border-bottom:1px solid var(--border);}
+.coal-table tr:last-child td{border-bottom:none;}
+.coal-table tr:hover td{background:var(--bg-hover);}
+.rank-select{background:var(--bg-card);border:1px solid var(--border-bright);color:var(--text-primary);border-radius:2px;padding:2px 6px;font-family:'Exo 2',sans-serif;font-size:12px;cursor:pointer;}
+.rank-pip{width:11px;height:11px;border-radius:50%;border:1px solid var(--border);background:var(--bg-deep);display:inline-block;margin-right:2px;}
+.rank-pip.filled{background:var(--gold);border-color:var(--gold);}
+.rank-pip.legend{background:var(--orange);border-color:var(--orange);}
+
+/* ITINERARY */
+.itin-block{margin-bottom:13px;}
+.itin-header{display:flex;align-items:center;gap:10px;margin-bottom:7px;flex-wrap:wrap;}
+.itin-time{font-family:'Cinzel',serif;font-size:10px;color:var(--orange);letter-spacing:.1em;min-width:100px;font-weight:600;}
+.itin-title{font-size:13px;font-weight:700;color:var(--text-primary);}
+.itin-where{font-size:10px;color:var(--cyan);background:rgba(74,184,200,.08);border:1px solid var(--cyan-dim);border-radius:2px;padding:1px 6px;}
+.itin-tasks{display:flex;flex-direction:column;gap:4px;padding-left:110px;}
+@media(max-width:700px){.itin-tasks{padding-left:0;}}
+.itin-task{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;cursor:pointer;user-select:none;transition:all .15s;}
+.itin-task:hover{border-color:var(--border-bright);}
+.itin-task.done .itin-task-text{text-decoration:line-through;color:var(--text-muted);}
+.itin-task-text{flex:1;font-size:13px;}
+.itin-priority{font-size:9px;padding:2px 5px;border-radius:2px;border:1px solid;font-weight:700;letter-spacing:.05em;flex-shrink:0;}
+.p-must{background:rgba(200,74,74,.15);border-color:#803030;color:#e87070;}
+.p-should{background:rgba(200,168,75,.1);border-color:var(--gold-dim);color:var(--gold);}
+.p-can{background:rgba(74,85,104,.2);border-color:var(--border);color:var(--text-muted);}
+
+/* INPUTS */
+.num-input{width:105px;background:var(--bg-card);border:1px solid var(--border-bright);color:var(--text-primary);border-radius:2px;padding:3px 7px;font-family:'Exo 2',sans-serif;font-size:13px;text-align:right;}
+.num-input:focus{outline:none;border-color:var(--gold-dim);}
+.date-input{background:var(--bg-card);border:1px solid var(--border-bright);border-radius:2px;color:var(--text-primary);padding:4px 8px;font-family:'Exo 2',sans-serif;font-size:12px;}
+.date-input:focus{outline:none;border-color:var(--gold-dim);}
+.num-row{display:flex;align-items:center;gap:10px;margin:5px 0;}
+.num-label{font-size:12px;color:var(--text-secondary);flex:1;}
+.num-target{font-size:11px;color:var(--text-muted);}
+.scroll-list{max-height:400px;overflow-y:auto;padding-right:4px;}
+.scroll-list::-webkit-scrollbar{width:3px;}
+.scroll-list::-webkit-scrollbar-thumb{background:var(--border-bright);border-radius:2px;}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:2px;padding:4px 10px;font-family:'Exo 2',sans-serif;font-size:11px;letter-spacing:.07em;cursor:pointer;transition:all .15s;text-transform:uppercase;}
+.btn-ghost:hover{border-color:var(--border-bright);color:var(--text-secondary);}
+
+/* SAVE BAR */
+.save-bar{position:fixed;bottom:12px;right:12px;display:flex;gap:8px;align-items:center;background:var(--bg-panel);border:1px solid var(--border-bright);border-radius:4px;padding:6px 12px;z-index:100;font-size:11px;color:var(--text-muted);}
+.save-btn{background:var(--gold-dim);border:none;color:#fff;border-radius:2px;padding:4px 12px;font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;letter-spacing:.07em;cursor:pointer;text-transform:uppercase;transition:background .15s;}
+.save-btn:hover{background:var(--gold);}
+.save-status{color:var(--green);font-size:10px;}
+.text-dim{color:var(--text-muted);font-size:11px;}
+.flex-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tag-cs{font-size:9px;padding:1px 5px;border-radius:2px;background:rgba(74,85,104,.3);border:1px solid var(--border);color:var(--text-muted);letter-spacing:.05em;}
+
+/* EVENTS */
+.event-card{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:13px;margin-bottom:9px;}
+.event-card.urgent{border-color:var(--red-dim);}
+.event-card.active{border-color:var(--cyan-dim);}
+.event-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:9px;flex-wrap:wrap;}
+.event-name{font-size:14px;font-weight:700;color:var(--text-primary);}
+.event-countdown{font-family:'Cinzel',serif;font-size:11px;padding:3px 9px;border-radius:2px;border:1px solid;font-weight:700;}
+.event-countdown.urgent{background:rgba(200,74,74,.15);border-color:var(--red-dim);color:var(--red);}
+.event-countdown.soon{background:rgba(200,168,75,.1);border-color:var(--gold-dim);color:var(--gold);}
+.event-countdown.ok{background:rgba(74,184,200,.08);border-color:var(--cyan-dim);color:var(--cyan);}
+.event-desc{font-size:12px;color:var(--text-secondary);margin-bottom:9px;line-height:1.5;}
+.event-rec{font-size:11px;color:var(--orange);background:rgba(232,133,58,.08);border:1px solid rgba(232,133,58,.2);border-radius:2px;padding:4px 8px;margin-bottom:9px;}
+.event-tasks{display:flex;flex-direction:column;gap:4px;}
+.daily-check{width:13px;height:13px;border-radius:50%;border:1px solid var(--border-bright);background:var(--bg-card);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.daily-check.done{background:var(--green);border-color:var(--green);}
+
+/* ML + WEEK */
+.ml-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:5px;margin-top:8px;}
+.ml-pip{padding:5px 3px;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);text-align:center;cursor:pointer;transition:all .15s;user-select:none;}
+.ml-pip:hover{border-color:var(--border-bright);}
+.ml-pip.done{background:rgba(74,184,200,.1);border-color:var(--cyan-dim);}
+.ml-pip-num{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--text-muted);}
+.ml-pip.done .ml-pip-num{color:var(--cyan);}
+.ml-pip-label{font-size:9px;color:var(--text-muted);margin-top:2px;line-height:1.2;}
+.ml-pip.done .ml-pip-label{color:var(--cyan-dim);}
+.week-step{display:flex;align-items:flex-start;gap:9px;padding:9px 11px;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;user-select:none;margin-bottom:5px;}
+.week-step:hover{border-color:var(--border-bright);background:var(--bg-hover);}
+.week-step.done{opacity:.3;}
+.week-step.done .week-text{text-decoration:line-through;color:var(--text-muted);}
+.week-text{font-size:13px;font-weight:500;line-height:1.4;}
+.week-why{font-size:11px;color:var(--text-muted);margin-top:3px;}
+
+/* GIL */
+.gil-method{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;cursor:pointer;user-select:none;transition:all .15s;margin-bottom:4px;}
+.gil-method:hover{border-color:var(--border-bright);}
+.gil-method.done{opacity:.35;}
+.gil-method.done .gil-text{text-decoration:line-through;color:var(--text-muted);}
+.gil-text{flex:1;font-size:12px;font-weight:500;}
+.gil-note{font-size:10px;color:var(--text-muted);margin-top:2px;}
+.gil-est{font-size:11px;color:var(--green);font-weight:600;white-space:nowrap;}
+.tier-tag{font-size:9px;padding:1px 4px;border-radius:2px;font-weight:700;border:1px solid;flex-shrink:0;}
+.tier-1{background:rgba(74,200,138,.1);border-color:var(--green-dim);color:var(--green);}
+.tier-2{background:rgba(74,184,200,.1);border-color:var(--cyan-dim);color:var(--cyan);}
+
+/* COR SPECIFIC */
+.roll-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:5px;}
+.roll-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .15s;user-select:none;}
+.roll-item:hover{border-color:var(--border-bright);}
+.roll-item.owned{opacity:.35;}
+.roll-item.owned .roll-name{text-decoration:line-through;color:var(--text-muted);}
+.roll-dot{width:9px;height:9px;border-radius:50%;border:1px solid #e84010;flex-shrink:0;background:transparent;}
+.roll-item.owned .roll-dot{background:var(--green);border-color:var(--green);}
+.roll-name{flex:1;font-size:13px;font-weight:500;}
+.roll-num{font-family:'Cinzel',serif;font-size:11px;color:var(--orange);font-weight:700;white-space:nowrap;}
+.roll-note{font-size:10px;color:var(--text-muted);white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="app" id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+
+const { useState, useCallback, useEffect } = React;
+const e = React.createElement;
+
+// ── THEMES ───────────────────────────────────────────────────────────
+const THEMES = [
+  { id: 'dark', cls: '', label: "Vana'diel Dark", btnCls: 'theme-dark' },
+  { id: 'midnight', cls: 'theme-midnight', label: 'Midnight Blue', btnCls: 'theme-mid' },
+  { id: 'parchment', cls: 'theme-parchment', label: 'Parchment', btnCls: 'theme-parch' },
+  { id: 'teal', cls: 'theme-teal', label: 'Adoulin Teal', btnCls: 'theme-tl' },
+];
+
+// ── SHARED CONSTANTS ──────────────────────────────────────────────────
+const COALITIONS = [
+  { id: 'pioneers', name: "Pioneers' Coalition" },
+  { id: 'couriers', name: "Couriers' Coalition" },
+  { id: 'archers', name: "Archers' Coalition" },
+  { id: 'peacekeepers', name: "Peacekeepers' Coalition" },
+  { id: 'scouts', name: "Scouts' Coalition" },
+  { id: 'mummers', name: "Mummers' Coalition" },
+];
+
+const ML_MILESTONES = [
+  { ml: 1, note: 'Unlocked' }, { ml: 5, note: 'JA unlock' }, { ml: 10, note: 'Skill +10' },
+  { ml: 15, note: 'JA unlock' }, { ml: 20, note: 'Skill +20' }, { ml: 25, note: 'JA unlock' },
+  { ml: 30, note: 'Skill +30' }, { ml: 35, note: 'JA unlock' }, { ml: 40, note: 'Skill +40' },
+  { ml: 45, note: 'JA unlock' }, { ml: 50, note: 'MAX' },
+];
+
+const DELVE_TITLES = [
+  { id: 'dc1', name: 'Warder of Courage', zone: 'Colosseum' },
+  { id: 'dc2', name: 'Warder of Fortitude', zone: 'Moh Gates' },
+  { id: 'dc3', name: 'Warder of Temperance', zone: 'Kamihr Drifts' },
+  { id: 'dc4', name: 'Warder of Honor', zone: 'Marjami Ravine' },
+  { id: 'dc5', name: 'Warder of Resolve', zone: "Outer Ra'Kaznar" },
+  { id: 'dc6', name: 'Warder of Love', zone: 'Leafallia' },
+];
+
+const GIL_METHODS = [
+  { id: 'g_sparks', text: 'Sparks + Unity conversion (weekly)', est: '~2M/wk', tier: 1, note: 'Floor income -- keep it going' },
+  { id: 'g_dynamis', text: 'Dynamis -- farm Ancient currency', est: '0.5-2M/wk', tier: 1, note: 'Always sellable, solo on WAR 99' },
+  { id: 'g_bcnm', text: 'BCNM/ENM runs with Kindred Seals', est: 'Variable', tier: 1, note: 'Erase / Utsusemi: Ni scrolls sell reliably' },
+  { id: 'g_garden', text: 'Mog Garden produce (passive)', est: '200-500K/wk', tier: 1, note: 'Compounds as node ranks increase' },
+  { id: 'g_skirmish', text: 'Skirmish -- revamped 2026', est: '500K-1.5M/wk', tier: 2, note: 'Drops + market flipping' },
+  { id: 'g_ambuscade', text: 'Sell excess Ambuscade materials', est: '1-3M/mo', tier: 2, note: 'Consistent monthly demand' },
+  { id: 'g_sortie', text: 'Sortie upgrade material drops', est: 'Variable/high', tier: 2, note: 'Stable demand -- players always upgrading' },
+];
+
+const TODAY = new Date('2026-05-27');
+function daysLeft(d) { return Math.max(0, Math.ceil((new Date(d) - TODAY) / 86400000)); }
+
+const EVENTS = [
+  { id: 'login', name: 'May 2026 Login Campaign', ends: '2026-06-02',
+    desc: 'Jubilee Ring: 50% EXP + 100% skill-up rate (cap 400).',
+    rec: 'GET JUBILEE RING FIRST. 6 days left.',
+    tasks: [{ id: 'ev_lr', text: 'Log in and claim Jubilee Ring from Greeter Moogle' }, { id: 'ev_le', text: 'Equip Jubilee Ring before skill-up sessions' }] },
+  { id: 'gratitude', name: "24th Vana'versary Gratitude Campaign", ends: '2026-06-09',
+    desc: "4 login days: Jubilee Ring (1), Silver Pell (2), Red Pell (3), Vana'clock (4).",
+    rec: "Silver Pell: Ambuscade Voucher Body. Red Pell: Snowslit Stone +1 x12. Ochre Pell: Kupofried or Joachim.",
+    tasks: [{ id: 'ev_g1', text: 'Day 1 -- Jubilee Ring' }, { id: 'ev_g2', text: 'Day 2 -- Silver Mog Pell' }, { id: 'ev_g3', text: 'Day 3 -- Red Mog Pell' }, { id: 'ev_g4', text: "Day 4 -- Vana'clock furnishing" }, { id: 'ev_gr', text: 'Redeem Red Pell: Snowslit Stone +1 x12' }, { id: 'ev_gs', text: 'Redeem Silver Pell: Ambuscade Voucher: Body' }, { id: 'ev_go', text: 'Redeem Ochre Pell: Kupofried or Joachim' }] },
+  { id: 'mog', name: 'Moogle Support Campaign', ends: '2026-06-09',
+    desc: "Auto-receive Red + Ochre Pell + Trust Primer on login. Festive Moogles: Port Bastok J-13, Port San d'Oria J-9, Windurst Walls C-14.",
+    rec: 'Separate from Gratitude pells -- you get both sets.',
+    tasks: [{ id: 'ev_ml', text: 'Log in to auto-receive Red + Ochre Pell + Trust Primer' }, { id: 'ev_mr', text: 'Redeem Red Pell: Snowslit Stone +1 x12' }, { id: 'ev_mo', text: 'Redeem Ochre Pell: Kupofried or Joachim' }] },
+  { id: 'elite', name: 'Elite Adventurer Training Program', ends: '2026-06-09',
+    desc: 'Equip Sh. Moogle Rod, speak to Erudite Moogle for anniversary rewards.',
+    rec: 'Run alongside daily activities.',
+    tasks: [{ id: 'ev_e1', text: 'Obtain Sh. Moogle Rod from starter city Moogle' }, { id: 'ev_e2', text: 'Speak to Erudite Moogle to begin training' }, { id: 'ev_e3', text: 'Complete training objectives each session' }] },
+  { id: 'strange', name: "Strange Happenings in Vana'diel (FFXIV Crossover)", ends: '2026-07-08',
+    desc: "Kill Kirin, Fafnir, Alexander. Craft armor at Synergy Furnace -- 0 skill needed.",
+    rec: 'PRIORITY: 4/4 set = 26% DT + 20% Haste. Pair with Murky Ring + Alabaster Earring for 41% DT.',
+    tasks: [{ id: 'ev_s1', text: "Kill Kirin -- Ru'Aun Gardens (Kirin Mane)" }, { id: 'ev_s2', text: 'Kill Fafnir -- The Boyahda Tree (Fafnir Scale)' }, { id: 'ev_s3', text: 'Kill Alexander -- Alzadaal Undersea Ruins (Iron Giant Shard)' }, { id: 'ev_s4', text: 'Buy RSSE base pieces from Curio Vendor Moogle' }, { id: 'ev_s5', text: 'Craft 4/4 set at Synergy Furnace (0 skill)' }, { id: 'ev_s6', text: 'Farm Limbus for Murky Ring + Alabaster Earring' }] },
+  { id: 'archduke', name: "The 'Real' Archduke of Jeuno Event", ends: '2026-07-08',
+    desc: "Return to Delkfutt's Tower -- Archduke's Shield has Refresh effect.",
+    rec: 'Low priority vs Strange Happenings but Refresh shield is free.',
+    tasks: [{ id: 'ev_a1', text: "Run Return to Delkfutt's Tower" }, { id: 'ev_a2', text: "Claim Archduke's Sword" }, { id: 'ev_a3', text: "Claim Archduke's Shield (Refresh effect)" }] },
+];
+
+const ITINERARY = [
+  { time: 'DAILY 1', title: 'Mog Garden', where: 'Any Mog House (Mog Garden gate)',
+    tasks: [{ id: 'i_mog1', text: 'Harvest all Mog Garden nodes (do not skip)', priority: 'must' }, { id: 'i_mog2', text: 'Re-plant all nodes immediately', priority: 'must' }, { id: 'i_mog3', text: 'Check Monster Rearing progress', priority: 'should' }, { id: 'i_mog4', text: 'Spend currency to rank up nodes toward Rank 7', priority: 'can' }] },
+  { time: 'DAILY 2', title: 'Coalition Quests', where: 'Frontier Station / Adoulin',
+    tasks: [{ id: 'i_coal1', text: 'Visit all 6 Coalition NPCs -- accept and complete quests', priority: 'must' }, { id: 'i_coal2', text: 'Check Imprimatur count (cap 15, regen 1 per 3 hrs)', priority: 'must' }, { id: 'i_coal3', text: 'Check Coalition Rank progress toward Legend', priority: 'should' }] },
+  { time: 'DAILY 3', title: 'Domain Invasion', where: 'Dynamis - D Zone (check JP schedule)',
+    tasks: [{ id: 'i_dom1', text: 'Join Domain Invasion -- daily cap is 100 points', priority: 'must' }, { id: 'i_dom2', text: 'Spend points on Stikini Rings x2 -- vendor: Zarim', priority: 'should' }] },
+  { time: 'DAILY 4', title: 'Records of Eminence', where: 'Menu > Records of Eminence',
+    tasks: [{ id: 'i_roe1', text: 'Complete daily RoE objectives (EXP + CP + gil)', priority: 'must' }, { id: 'i_roe2', text: 'Check RoE Intermediate 2 -- upgrade body piece to +3 for free gear coupons', priority: 'should' }] },
+  { time: '20HR LOCKOUT', title: 'Sortie', where: 'Outer Adoulin (Rala Waterways)',
+    tasks: [{ id: 'i_sort1', text: 'Enter Sortie -- Sneak + Invisible for stealth solo', priority: 'must' }, { id: 'i_sort2', text: 'Collect 1,000-2,000 Gallimaufry via non-combat exploration', priority: 'must' }, { id: 'i_sort3', text: 'Target Empyrean gear NMs if party available', priority: 'can' }] },
+  { time: 'WEEKLY', title: 'Ambuscade', where: 'Mog House / starter cities (monthly cap)',
+    tasks: [{ id: 'i_amb1', text: 'Run Ambuscade Normal difficulty for Hallmarks', priority: 'must' }, { id: 'i_amb2', text: 'Save Hallmarks and Badges of Gallantry toward Lifestream Cape', priority: 'should' }, { id: 'i_amb3', text: 'Check this month for COR or GEO-relevant drops', priority: 'can' }] },
+  { time: 'WEEKLY', title: 'Limbus', where: 'Outer Adoulin / Limbus entry',
+    tasks: [{ id: 'i_lim1', text: 'Run Limbus -- target Murky Ring + Alabaster Earring', priority: 'must' }, { id: 'i_lim2', text: 'Use free climb: Question Mark spawns for instant clear vouchers', priority: 'should' }] },
+  { time: 'WEEKLY', title: 'Delve Mega-Boss', where: 'Adoulin zones -- Colosseum first',
+    tasks: [{ id: 'i_del1', text: 'Kill at least 1 Delve Mega-Boss (all 6 titles needed for Idris)', priority: 'must' }, { id: 'i_del2', text: 'Warder of Courage (Colosseum) -- farm Bayld toward 13,099', priority: 'should' }] },
+];
+
+// ── SHARED GEAR ────────────────────────────────────────────────────────
+const SHARED_GEAR = {
+  'Rings': [
+    { id: 'sh_stikini', name: 'Stikini Ring +1 x2', slot: 'Ring x2', source: 'Domain Invasion (Zarim)', note: 'Magic Accuracy', jobs: 'GEO BLM RDM SCH WHM BRD COR' },
+    { id: 'sh_murky', name: 'Murky Ring', slot: 'Ring', source: 'Limbus', note: '10% Damage Taken', jobs: 'ALL JOBS' },
+    { id: 'sh_kishar', name: 'Kishar Ring', slot: 'Ring', source: 'Vagary', note: 'Spell interruption down', jobs: 'WHM RDM GEO' },
+  ],
+  'Earrings': [
+    { id: 'sh_alabaster', name: 'Alabaster Earring', slot: 'Ear', source: 'Limbus', note: '5% DT + 5% Haste', jobs: 'ALL JOBS' },
+    { id: 'sh_moonshade', name: 'Moonshade Earring', slot: 'Ear', source: "Rhapsodies of Vana'diel", note: 'TP Bonus + extra MP -- mission reward', jobs: 'ALL MAGE' },
+    { id: 'sh_malign_ear', name: 'Malignance Earring', slot: 'Ear', source: 'High-Tier Battlefields', note: 'Magic Accuracy + DT', jobs: 'GEO BLM RDM SCH WHM' },
+  ],
+  'Malignance Set (High-Tier Battlefields)': [
+    { id: 'sh_mal_head', name: 'Malignance Toque', slot: 'Head', source: 'High-Tier Battlefields', note: 'DT + Magic Acc -- universal mage idle set', jobs: 'ALL MAGE' },
+    { id: 'sh_mal_body', name: 'Malignance Tabard', slot: 'Body', source: 'High-Tier Battlefields', note: 'DT + Magic Acc', jobs: 'ALL MAGE' },
+    { id: 'sh_mal_hands', name: 'Malignance Gloves', slot: 'Hands', source: 'High-Tier Battlefields', note: 'DT + Magic Acc', jobs: 'ALL MAGE' },
+    { id: 'sh_mal_legs', name: 'Malignance Tights', slot: 'Legs', source: 'High-Tier Battlefields', note: 'DT + Magic Acc', jobs: 'ALL MAGE' },
+    { id: 'sh_mal_feet', name: 'Malignance Boots', slot: 'Feet', source: 'High-Tier Battlefields', note: 'DT + Magic Acc', jobs: 'ALL MAGE' },
+  ],
+  "Escha-Ru'Aun (Shared Mage Pieces)": [
+    { id: 'sh_amalric', name: 'Amalric Nails +1', slot: 'Hands', source: "Escha-Ru'Aun NM", note: 'Magic Burst +7%', jobs: 'GEO BLM SCH' },
+    { id: 'sh_jhakri', name: 'Jhakri Robe +2', slot: 'Body', source: "Escha-Ru'Aun NM", note: 'INT / Magic Burst', jobs: 'GEO BLM SCH' },
+    { id: 'sh_acuity', name: 'Acuity Belt +1', slot: 'Waist', source: "Escha-Ru'Aun NM", note: 'Magic Accuracy', jobs: 'GEO BLM SCH RDM' },
+    { id: 'sh_grioavolr', name: 'Grioavolr', slot: 'Staff', source: "Escha-Ru'Aun NM", note: 'Top mage nuke staff', jobs: 'BLM SCH GEO' },
+  ],
+};
+
+// ── SCRIBBLE (GEO) DATA ──────────────────────────────────────────────
+
+const GEO_GEAR = {
+  event: [
+    { id: 'strange_body', name: 'Strange Happenings Armor (4/4 set)', slot: 'Body/Hands/Legs/Feet', source: 'Synergy Furnace (0 skill)', note: '26% DT + 20% Equipment Haste', tier: 'event' },
+    { id: 'murky_ring', name: 'Murky Ring', slot: 'Ring', source: 'Limbus', note: '10% DT', tier: 'event' },
+    { id: 'alabaster_ear', name: 'Alabaster Earring', slot: 'Ear', source: 'Limbus', note: '5% DT + 5% Haste', tier: 'event' },
+  ],
+  mid: [
+    { id: 'solstice_d', name: 'Solstice (Path D)', slot: 'Club', source: "Escha-Zi'Tah NM", note: 'Indi Duration +10s', tier: 'mid' },
+    { id: 'dunna', name: 'Dunna', slot: 'Bell', source: 'Mog Bonanza / AH', note: 'Geomancy Potency +15 (KEY) -- Geomancy+ items do not stack', tier: 'mid' },
+    { id: 'bagua_pants1', name: 'Bagua Pants +1', slot: 'Legs (AF)', source: 'Reforged AF +1', note: 'Skill / Duration', tier: 'mid' },
+    { id: 'azimuth_gaiters1', name: 'Azimuth Gaiters +1', slot: 'Feet (AF)', source: 'Reforged AF +1', note: 'Skill / Duration', tier: 'mid' },
+    { id: 'lifestream', name: 'Lifestream Cape', slot: 'Back', source: 'Ambuscade (Slit Stone +1 augment)', note: 'Indi Duration +10% multiplicative', tier: 'mid' },
+    { id: 'bagua_mitaines', name: 'Bagua Mitaines', slot: 'Hands (AF)', source: 'Reforged AF', note: 'Geomancy skill', tier: 'mid' },
+    { id: 'skill_tome_geo', name: "Copy of Hrohj's Record", slot: 'RoE Tome', source: 'RoE NPC -- Spell Increasing Tomes (Sparks)', note: 'Fast Geomancy skill gains', tier: 'mid' },
+    { id: 'skill_tome_bell', name: 'Copy of The Bell Tolls', slot: 'RoE Tome', source: 'RoE NPC -- Spell Increasing Tomes (Sparks)', note: 'Fast Handbell skill gains', tier: 'mid' },
+  ],
+  roe: [
+    { id: 'roe_body', name: 'RoE Intermediate 2: Upgrade AF/Relic/Emp Body to +3', slot: 'Quest Trigger', source: 'Records of Eminence', note: 'Unlocks free gear coupon chain', tier: 'mid' },
+    { id: 'roe_af3', name: 'Claim Free AF+3 Piece', slot: 'Coupon', source: 'RoE Intermediate 2', note: 'Use on Bagua or Azimuth', tier: 'mid' },
+    { id: 'roe_emp3', name: 'Claim Free Empyrean +3 Piece', slot: 'Coupon', source: 'RoE Intermediate 2', note: 'Highest value claim', tier: 'mid' },
+  ],
+  max: [
+    { id: 'gada', name: 'Gada', slot: 'Club', source: 'JSE Augment', note: 'Indi Duration +11%', tier: 'max' },
+    { id: 'bagua_pants3', name: 'Bagua Pants +3', slot: 'Legs (AF)', source: 'Reforged AF +3', note: 'Max Duration bonus', tier: 'max' },
+    { id: 'azimuth_gaiters3', name: 'Azimuth Gaiters +3', slot: 'Feet (AF)', source: 'Reforged AF +3', note: 'Max Duration bonus', tier: 'max' },
+    { id: 'lifestream20', name: 'Lifestream Cape (+20% aug)', slot: 'Back', source: 'Ambuscade max augment', note: 'Slit Stone +1 x12 to max', tier: 'max' },
+    { id: 'idris', name: 'Idris', slot: 'Bell (REMA)', source: '6-Month Timer', note: 'ENDGAME -- replaces Dunna', tier: 'max' },
+  ],
+  luopan: [
+    { id: 'bagua_tunic', name: 'Bagua Tunic', slot: 'Body (AF)', source: 'Reforged AF', note: 'Luopan DT', tier: 'luopan' },
+    { id: 'geomancy_galero', name: 'Geomancy Galero', slot: 'Head (AF)', source: 'Reforged AF', note: 'Luopan HP Regen', tier: 'luopan' },
+    { id: 'amalric_nails', name: 'Amalric Nails', slot: 'Hands', source: "Escha-Ru'Aun NM", note: 'Magic Burst +7%', tier: 'luopan' },
+    { id: 'jhakri_body', name: 'Jhakri Robe +2', slot: 'Body', source: "Escha-Ru'Aun NM", note: 'INT / Magic Burst', tier: 'luopan' },
+    { id: 'stikini_ring', name: 'Stikini Ring x2', slot: 'Ring', source: 'Domain Invasion (Zarim)', note: 'Magic Accuracy', tier: 'luopan' },
+  ],
+};
+
+const GEO_WEEK = [
+  { id: 'gw1', text: 'Run Ambuscade Normal difficulty', why: 'V2VE done -- step up now. Hallmarks accumulate faster toward Lifestream Cape.' },
+  { id: 'gw2', text: 'Run High-Tier Battlefield for Malignance set pieces (solo on WAR 99)', why: 'Serves GEO, BLM, RDM, SCH, WHM simultaneously. Best shared investment available now.' },
+  { id: 'gw3', text: 'Complete Reforged JSE quest chain -- obtain Bagua AF base pieces', why: 'Foundation for GEO duration gear. Unlocks AF reforging path.' },
+  { id: 'gw4', text: 'Check AH for Dunna pricing on your server', why: 'Geomancy Potency +15 -- the real bell until Idris. Price varies by server.' },
+  { id: 'gw5', text: 'Run Warder of Courage (Colosseum -- Delve Mega-Boss)', why: 'First Idris title + Bayld farming. Colosseum is the easiest Delve entry point.' },
+];
+
+const GEO_SPELLS = {
+  'Indicolure (Indi-) Spells': [
+    {id:'indi_poison',name:'Indi-Poison',lvl:1,note:'DoT on enemy'},{id:'indi_voidance',name:'Indi-Voidance',lvl:4,note:'Evasion up'},
+    {id:'indi_precision',name:'Indi-Precision',lvl:10,note:'Accuracy up'},{id:'indi_regen',name:'Indi-Regen',lvl:15,note:'HP Regen'},
+    {id:'indi_attune',name:'Indi-Attunement',lvl:16,note:'Magic Eva up'},{id:'indi_focus',name:'Indi-Focus',lvl:22,note:'Magic Acc up'},
+    {id:'indi_barrier',name:'Indi-Barrier',lvl:28,note:'Defense up'},{id:'indi_refresh',name:'Indi-Refresh',lvl:30,note:'MP Regen'},
+    {id:'indi_chr',name:'Indi-CHR',lvl:30,note:'CHR up'},{id:'indi_mnd',name:'Indi-MND',lvl:33,note:'MND up'},
+    {id:'indi_fury',name:'Indi-Fury',lvl:34,note:'Attack up'},{id:'indi_int',name:'Indi-INT',lvl:34,note:'INT up'},
+    {id:'indi_agi',name:'Indi-AGI',lvl:39,note:'AGI up'},{id:'indi_fend',name:'Indi-Fend',lvl:40,note:'Magic Def up'},
+    {id:'indi_vit',name:'Indi-VIT',lvl:42,note:'VIT up'},{id:'indi_dex',name:'Indi-DEX',lvl:45,note:'DEX up'},
+    {id:'indi_acumen',name:'Indi-Acumen',lvl:46,note:'Magic ATK up'},{id:'indi_str',name:'Indi-STR',lvl:48,note:'STR up'},
+    {id:'indi_slow',name:'Indi-Slow',lvl:48,note:'Slow enemy'},{id:'indi_torpor',name:'Indi-Torpor',lvl:52,note:'Eva down'},
+    {id:'indi_slip',name:'Indi-Slip',lvl:58,note:'Acc down'},{id:'indi_languor',name:'Indi-Languor',lvl:64,note:'Magic Eva down'},
+    {id:'indi_paralysis',name:'Indi-Paralysis',lvl:68,note:'Paralyze enemy'},{id:'indi_vex',name:'Indi-Vex',lvl:70,note:'Magic Acc down'},
+    {id:'indi_frailty',name:'Indi-Frailty',lvl:76,note:'Def down'},{id:'indi_wilt',name:'Indi-Wilt',lvl:82,note:'ATK down'},
+    {id:'indi_malaise',name:'Indi-Malaise',lvl:88,note:'Magic Def down'},{id:'indi_gravity',name:'Indi-Gravity',lvl:88,note:'Weight enemy'},
+    {id:'indi_fade',name:'Indi-Fade',lvl:94,note:'Magic ATK down'},
+  ],
+  'Geocolure (Geo-) Spells': [
+    {id:'geo_poison',name:'Geo-Poison',lvl:5,note:'Luopan: AoE DoT'},{id:'geo_voidance',name:'Geo-Voidance',lvl:8,note:'Luopan: Eva up'},
+    {id:'geo_precision',name:'Geo-Precision',lvl:14,note:'Luopan: Acc up'},{id:'geo_regen',name:'Geo-Regen',lvl:19,note:'Luopan: AoE Regen'},
+    {id:'geo_attune',name:'Geo-Attunement',lvl:20,note:'Luopan: Magic Eva up'},{id:'geo_focus',name:'Geo-Focus',lvl:26,note:'Luopan: Magic Acc up'},
+    {id:'geo_barrier',name:'Geo-Barrier',lvl:32,note:'Luopan: Def up'},{id:'geo_refresh',name:'Geo-Refresh',lvl:34,note:'Luopan: AoE Refresh'},
+    {id:'geo_chr',name:'Geo-CHR',lvl:34,note:'Luopan: CHR up'},{id:'geo_mnd',name:'Geo-MND',lvl:37,note:'Luopan: MND up'},
+    {id:'geo_fury',name:'Geo-Fury',lvl:38,note:'Luopan: ATK up'},{id:'geo_int',name:'Geo-INT',lvl:40,note:'Luopan: INT up'},
+    {id:'geo_agi',name:'Geo-AGI',lvl:43,note:'Luopan: AGI up'},{id:'geo_fend',name:'Geo-Fend',lvl:44,note:'Luopan: Magic Def up'},
+    {id:'geo_vit',name:'Geo-VIT',lvl:46,note:'Luopan: VIT up'},{id:'geo_dex',name:'Geo-DEX',lvl:49,note:'Luopan: DEX up'},
+    {id:'geo_acumen',name:'Geo-Acumen',lvl:50,note:'Luopan: Magic ATK up'},{id:'geo_str',name:'Geo-STR',lvl:52,note:'Luopan: STR up'},
+    {id:'geo_slow',name:'Geo-Slow',lvl:52,note:'Luopan: AoE Slow'},{id:'geo_torpor',name:'Geo-Torpor',lvl:56,note:'Luopan: Eva down'},
+    {id:'geo_slip',name:'Geo-Slip',lvl:62,note:'Luopan: Acc down'},{id:'geo_languor',name:'Geo-Languor',lvl:68,note:'Luopan: Magic Eva down'},
+    {id:'geo_paralysis',name:'Geo-Paralysis',lvl:72,note:'Luopan: AoE Paralyze'},{id:'geo_vex',name:'Geo-Vex',lvl:74,note:'Luopan: Magic Acc down'},
+    {id:'geo_frailty',name:'Geo-Frailty',lvl:80,note:'Luopan: Def down (KEY)'},{id:'geo_wilt',name:'Geo-Wilt',lvl:86,note:'Luopan: ATK down'},
+    {id:'geo_malaise',name:'Geo-Malaise',lvl:92,note:'Luopan: Magic Def down'},{id:'geo_gravity',name:'Geo-Gravity',lvl:92,note:'Luopan: AoE Weight'},
+    {id:'geo_fade',name:'Geo-Fade',lvl:98,note:'Luopan: Magic ATK down'},
+  ],
+  'Elemental -ra Spells (AoE Nukes)': [
+    {id:'stonera',name:'Stonera',lvl:25,note:'Earth AoE'},{id:'watera',name:'Watera',lvl:30,note:'Water AoE'},
+    {id:'aerora',name:'Aerora',lvl:35,note:'Wind AoE'},{id:'fira',name:'Fira',lvl:40,note:'Fire AoE'},
+    {id:'blizzara',name:'Blizzara',lvl:45,note:'Ice AoE'},{id:'thundara',name:'Thundara',lvl:50,note:'Thunder AoE'},
+    {id:'stonera2',name:'Stonera II',lvl:70,note:'Earth AoE II'},{id:'watera2',name:'Watera II',lvl:75,note:'Water AoE II'},
+    {id:'aerora2',name:'Aerora II',lvl:80,note:'Wind AoE II'},{id:'fira2',name:'Fira II',lvl:85,note:'Fire AoE II'},
+    {id:'blizzara2',name:'Blizzara II',lvl:90,note:'Ice AoE II'},{id:'thundara2',name:'Thundara II',lvl:95,note:'Thunder AoE II'},
+  ],
+};
+
+// ── RAGELOG (COR) DATA ───────────────────────────────────────────────
+
+const COR_GEAR = {
+  savage: [
+    { id: 'c_naegling', name: 'Naegling', slot: 'Sword (REMA)', source: 'Obtained', note: 'Savage Blade core weapon -- DONE', tier: 'key' },
+    { id: 'c_flamma_body', name: 'Flamma Korazin +2', slot: 'Body', source: 'Ambuscade', note: 'Savage Blade WS damage', tier: 'cor' },
+    { id: 'c_adhemar_hands', name: 'Adhemar Wrist. +1', slot: 'Hands', source: "Escha-Ru'Aun NM", note: 'DEX / Savage Blade', tier: 'cor' },
+    { id: 'c_epona_ring', name: 'Epona Ring', slot: 'Ring', source: "Abyssea - Altepa NM", note: 'Triple Attack -- Savage Blade proc', tier: 'cor' },
+    { id: 'c_sailfi_belt', name: 'Sailfi Belt +1', slot: 'Waist', source: "Escha-Ru'Aun NM", note: 'STR + DA -- Savage Blade waist', tier: 'cor' },
+    { id: 'c_nyame_helm', name: 'Nyame Helm', slot: 'Head', source: 'Odyssey (Sheol A+)', note: 'WS damage / Savage Blade', tier: 'max' },
+    { id: 'c_nyame_body', name: 'Nyame Mail', slot: 'Body', source: 'Odyssey (Sheol A+)', note: 'WS damage -- endgame body', tier: 'max' },
+  ],
+  leaden: [
+    { id: 'c_taranus_cape', name: "Taranus's Cape", slot: 'Back', source: 'Ambuscade', note: 'INT / Magic Acc -- Leaden Salute cape', tier: 'cor' },
+    { id: 'c_ghost_earring', name: "Ghost Earring", slot: 'Ear', source: 'AH / Crafted', note: 'INT -- Leaden Salute', tier: 'cor' },
+    { id: 'c_friomisi_earring', name: 'Friomisi Earring', slot: 'Ear', source: 'AH / NM', note: 'Magic Atk Bonus -- Leaden', tier: 'cor' },
+    { id: 'c_pixie_earring', name: 'Pixie Earring', slot: 'Ear', source: 'AH', note: 'Magic Atk Bonus -- Leaden', tier: 'cor' },
+    { id: 'c_amalric_body', name: 'Amalric Doublet +1', slot: 'Body', source: "Escha-Ru'Aun NM", note: 'Magic Atk Bonus -- Leaden Salute', tier: 'cor' },
+    { id: 'c_luzaf_ring', name: "Luzaf's Ring", slot: 'Ring', source: 'Dynamis - Windurst', note: 'Doubles Phantom Roll AoE (16 yalm vs 8) -- HIGH PRIORITY', tier: 'key' },
+    { id: 'c_bronze_bullet', name: 'Bronze Bullets (supply)', slot: 'Ammo', source: 'Alchemy / Bronze Bandolier (daily)', note: 'Required for Leaden Salute and Wildfire', tier: 'cor' },
+  ],
+  phantom_roll: [
+    { id: 'c_navarch_tricorne', name: "Navarch's Tricorne +2", slot: 'Head (Relic AF)', source: 'Reforged Relic', note: 'Enhances Blitzer Roll by 3%', tier: 'cor' },
+    { id: 'c_navarch_frac', name: "Navarch's Frac +2", slot: 'Body (Relic AF)', source: 'Reforged Relic', note: "Enhances Tactician's Roll (+1 TP/tick)", tier: 'cor' },
+    { id: 'c_navarch_gants', name: "Navarch's Gants +2", slot: 'Hands (Relic AF)', source: 'Reforged Relic', note: 'Enhances Phantom Rolls by 10% (+30-40s duration)', tier: 'cor' },
+    { id: 'c_desultor', name: 'Desultor Tassets', slot: 'Legs', source: 'AH / Crafted', note: 'Augment for Phantom Roll recast -5s', tier: 'cor' },
+    { id: 'c_commodore_tricorne', name: "Commodore Tricorne +2", slot: 'Head (AF)', source: 'Reforged AF', note: 'Sub-job roll bonus 31-33% uptime (lv64 and under rolls)', tier: 'cor' },
+    { id: 'c_rudianos_medal', name: "Rudianos's Mantle", slot: 'Back', source: 'Ambuscade', note: 'Phantom Roll recast reduction', tier: 'cor' },
+  ],
+  tp: [
+    { id: 'c_apoc_gun', name: 'Fomalhaut / Annihilator', slot: 'Ranged', source: 'REMA (future goal)', note: 'Endgame ranged weapon for TP build', tier: 'max' },
+    { id: 'c_compensator', name: "Compensator", slot: 'Ranged', source: 'Dynamis / AH', note: 'Mid-tier ranged TP weapon', tier: 'cor' },
+    { id: 'c_flamma_zucchetto', name: 'Flamma Zucchetto +2', slot: 'Head', source: 'Ambuscade', note: 'TP / ranged accuracy', tier: 'cor' },
+    { id: 'c_pursuer_body', name: "Pursuer's Doublet", slot: 'Body', source: 'Ambuscade', note: 'Ranged accuracy / TP', tier: 'cor' },
+    { id: 'c_acro_legs', name: "Acro Breeches", slot: 'Legs', source: "Escha-Zi'Tah", note: 'Augmented for TP/DA', tier: 'cor' },
+    { id: 'c_ogier_feet', name: "Ogier's Gauntlets", slot: 'Feet', source: "Escha-Ru'Aun NM", note: 'Triple Attack -- TP set', tier: 'cor' },
+  ],
+};
+
+const COR_ROLLS = [
+  // Each roll: id, name, lucky, unlucky, note (what it buffs)
+  { id: 'r_corsair', name: "Corsair's Roll", lucky: 5, unlucky: 9, note: 'EXP / CP bonus' },
+  { id: 'r_drachen', name: "Drachen Roll", lucky: 4, unlucky: 8, note: 'Pet ATK / ACC' },
+  { id: 'r_chaos', name: "Chaos Roll", lucky: 11, unlucky: 3, note: 'ATK up -- melee DPS' },
+  { id: 'r_hunter', name: "Hunter's Roll", lucky: 4, unlucky: 8, note: 'ACC up -- all physical' },
+  { id: 'r_fighter', name: "Fighter's Roll", lucky: 5, unlucky: 9, note: 'Double/Triple Attack' },
+  { id: 'r_monk', name: "Monk's Roll", lucky: 8, unlucky: 3, note: 'Subtle Blow' },
+  { id: 'r_healer', name: "Healer's Roll", lucky: 3, unlucky: 7, note: 'Cure potency' },
+  { id: 'r_wizard', name: "Wizard's Roll", lucky: 5, unlucky: 9, note: 'Magic ATK Bonus' },
+  { id: 'r_warlock', name: "Warlock's Roll", lucky: 4, unlucky: 8, note: 'Magic ACC' },
+  { id: 'r_scholar', name: "Scholar's Roll", lucky: 9, unlucky: 3, note: 'Sublimation / MP regen' },
+  { id: 'r_ninja', name: "Ninja Roll", lucky: 4, unlucky: 8, note: 'Subtle Blow' },
+  { id: 'r_samurai', name: "Samurai's Roll", lucky: 9, unlucky: 3, note: 'Store TP' },
+  { id: 'r_ranger', name: "Ranger's Roll", lucky: 11, unlucky: 3, note: 'Ranged ACC' },
+  { id: 'r_thief', name: "Thief's Roll", lucky: 3, unlucky: 7, note: 'Critical hit rate' },
+  { id: 'r_blitzer', name: "Blitzer's Roll", lucky: 4, unlucky: 8, note: 'Attack speed (Haste)' },
+  { id: 'r_tactician', name: "Tactician's Roll", lucky: 9, unlucky: 3, note: 'Regain (TP regen)' },
+  { id: 'r_bolter', name: "Bolter's Roll", lucky: 3, unlucky: 9, note: 'Movement speed' },
+  { id: 'r_caster', name: "Caster's Roll", lucky: 2, unlucky: 6, note: 'Spell interruption down' },
+  { id: 'r_courser', name: "Courser's Roll", lucky: 3, unlucky: 9, note: 'Snapshot (Ranged delay)' },
+  { id: 'r_evoker', name: "Evoker's Roll", lucky: 5, unlucky: 9, note: 'Avatar perpetuation cost' },
+  { id: 'r_magus', name: "Magus's Roll", lucky: 2, unlucky: 6, note: 'Magic defense bonus' },
+  { id: 'r_puppet', name: "Puppet Roll", lucky: 4, unlucky: 8, note: 'Automaton TP' },
+  { id: 'r_dancer', name: "Dancer's Roll", lucky: 3, unlucky: 7, note: 'Waltz potency' },
+  { id: 'r_beast', name: "Beast Roll", lucky: 4, unlucky: 8, note: 'Pet DEF/DT' },
+];
+
+const COR_WEEK = [
+  { id: 'cw1', text: 'Build Savage Blade gear set around Naegling -- identify missing slots', why: 'Naegling is your best WS weapon. The set around it determines actual damage output.' },
+  { id: 'cw2', text: "Farm Luzaf's Ring (Dynamis - Windurst)", why: "Doubles Phantom Roll AoE from 8 to 16 yalm. Single biggest support upgrade available to COR right now." },
+  { id: 'cw3', text: 'Augment Ambuscade pieces toward +1/+2', why: 'Current Ambuscade base pieces are your foundation -- augmenting them is faster than replacing them right now.' },
+  { id: 'cw4', text: 'Confirm 5/5 Quick Draw Recast merits are maxed', why: 'This is the mandatory first merit investment for COR. Everything else builds on it.' },
+  { id: 'cw5', text: 'Acquire Desultor Tassets and check augment for Phantom Roll recast -5s', why: 'Phantom Roll recast reduction compounds over a session -- every buff cycle you land faster.' },
+];
+
+// ── PROFILE DEFINITIONS ───────────────────────────────────────────────
+const PROFILES = {
+  scribble: {
+    name: 'Scribble',
+    job: 'GEO / BRD',
+    color: 'var(--cyan)',
+    tabs: ['overview', 'events', 'idris', 'geo', 'spells', 'itinerary', 'ffxiv'],
+  },
+  ragelog: {
+    name: 'Ragelog',
+    job: 'COR',
+    color: '#e84010',
+    tabs: ['overview', 'events', 'cor', 'rolls', 'itinerary', 'ffxiv'],
+  },
+};
+
+const TAB_LABELS = {
+  overview: 'Overview',
+  events: 'Events',
+  idris: 'Idris Timer',
+  geo: 'GEO Tracker',
+  spells: 'Spells / Songs',
+  cor: 'COR Tracker',
+  rolls: 'Phantom Rolls',
+  itinerary: 'Daily Itinerary',
+  ffxiv: 'FFXIV',
+};
+
+// ── STORAGE ───────────────────────────────────────────────────────────
+const SK = 'ffxi_v6';
+function load() { try { const r = localStorage.getItem(SK); if (r) return JSON.parse(r); } catch(e) {} return null; }
+function persist(s) { try { localStorage.setItem(SK, JSON.stringify(s)); } catch(e) {} }
+
+function calcTimer(start) {
+  if (!start) return { days: 0, pct: 0, remaining: 180 };
+  const d = Math.floor((new Date() - new Date(start)) / 86400000);
+  const days = Math.max(0, Math.min(d, 180));
+  return { days, pct: Math.round(days / 180 * 100), remaining: Math.max(0, 180 - days) };
+}
+
+const INIT_SCRIBBLE = {
+  idrisStart: '2026-05-26',
+  coalitions: {},
+  imprimaturs: {0:false,1:false,2:false,3:true,4:true,5:true,6:true,7:true,8:true,9:true,10:true,11:true,12:true,13:true,14:true},
+  bayld: 0, plasm: 0, delves: {},
+  geoGear: {}, sharedGear: {}, geoSkills: { geo: 0, bell: 0 },
+  spells: { GEO: {} },
+  weekDone: {}, gilDone: {},
+  mogGardenRank: 1, masterLevel: 0,
+  gilCurrent: 0, gilTarget: 0,
+};
+
+const INIT_RAGELOG = {
+  corGear: {}, sharedGear: {}, rollsOwned: {},
+  weekDone: {}, gilDone: {},
+  masterLevel: 0,
+  gilCurrent: 0, gilTarget: 0,
+};
+
+const INIT = {
+  theme: 'dark',
+  activeProfile: 'scribble',
+  eventDone: {},
+  dailyDone: {},
+  scribble: INIT_SCRIBBLE,
+  ragelog: INIT_RAGELOG,
+};
+
+function reducer(st, a) {
+  const p = st.activeProfile;
+  const pd = st[p] || {};
+  function setP(patch) { return { ...st, [p]: { ...pd, ...patch } }; }
+
+  switch(a.t) {
+    case 'THEME': return { ...st, theme: a.v };
+    case 'PROFILE': return { ...st, activeProfile: a.v };
+    case 'EVENT_TASK': return { ...st, eventDone: { ...st.eventDone, [a.id]: !st.eventDone[a.id] } };
+    case 'DAILY': return { ...st, dailyDone: { ...st.dailyDone, [a.id]: !st.dailyDone[a.id] } };
+    case 'RESET_DAILY': return { ...st, dailyDone: {} };
+    // Profile-scoped
+    case 'SET_P': return setP({ [a.k]: a.v });
+    case 'COALITION': return setP({ coalitions: { ...pd.coalitions, [a.id]: a.v } });
+    case 'IMP': return setP({ imprimaturs: { ...pd.imprimaturs, [a.i]: !pd.imprimaturs[a.i] } });
+    case 'DELVE': return setP({ delves: { ...pd.delves, [a.id]: !pd.delves[a.id] } });
+    case 'GEO_GEAR': return setP({ geoGear: { ...pd.geoGear, [a.id]: !pd.geoGear[a.id] } });
+    case 'COR_GEAR': return setP({ corGear: { ...pd.corGear, [a.id]: !pd.corGear[a.id] } });
+    case 'SHARED_GEAR': return setP({ sharedGear: { ...pd.sharedGear, [a.id]: !pd.sharedGear[a.id] } });
+    case 'GEO_SKILL': return setP({ geoSkills: { ...pd.geoSkills, [a.k]: a.v } });
+    case 'SPELL': return setP({ spells: { ...pd.spells, [a.job]: { ...(pd.spells||{})[a.job], [a.id]: !((pd.spells||{})[a.job]||{})[a.id] } } });
+    case 'ROLL': return setP({ rollsOwned: { ...pd.rollsOwned, [a.id]: !pd.rollsOwned[a.id] } });
+    case 'WEEK': return setP({ weekDone: { ...pd.weekDone, [a.id]: !pd.weekDone[a.id] } });
+    case 'GIL': return setP({ gilDone: { ...pd.gilDone, [a.id]: !pd.gilDone[a.id] } });
+    default: return st;
+  }
+}
+
+// ── SHARED COMPONENTS ────────────────────────────────────────────────
+function Checkbox({ checked }) {
+  return e('div', { className: 'checkbox' + (checked ? ' checked' : '') },
+    checked && e('svg', { width: 10, height: 8, viewBox: '0 0 10 8', fill: 'none' },
+      e('path', { d: 'M1 4L3.5 6.5L9 1', stroke: 'white', strokeWidth: 1.8, strokeLinecap: 'round' })
+    )
+  );
+}
+function DotCheck({ done }) {
+  return e('div', { className: 'daily-check' + (done ? ' done' : '') },
+    done && e('svg', { width: 8, height: 7, viewBox: '0 0 8 7', fill: 'none' },
+      e('path', { d: 'M1 3.5L3 5.5L7 1', stroke: 'white', strokeWidth: 1.8, strokeLinecap: 'round' })
+    )
+  );
+}
+function Chk({ label, done, onToggle, note, source, tier, jobs }) {
+  return e('div', { className: 'check-item' + (done ? ' done' : ''), onClick: onToggle },
+    e(Checkbox, { checked: done }),
+    e('span', { className: 'check-name' }, label),
+    note && e('span', { className: 'check-note' }, note),
+    source && e('span', { className: 'check-source' }, source),
+    jobs && e('span', { className: 'check-jobs' }, jobs),
+    tier && e('span', { className: 'tier-badge tier-' + tier }, tier.toUpperCase())
+  );
+}
+function PBar({ pct, cls, style }) {
+  return e('div', { className: 'bar-track', style },
+    e('div', { className: 'bar-fill ' + cls, style: { width: pct + '%' } })
+  );
+}
+
+// ── OVERVIEW (shared structure, profile-specific data) ────────────────
+function OverviewTab({ st, d }) {
+  const p = st.activeProfile;
+  const pd = st[p] || {};
+  const isGEO = p === 'scribble';
+
+  const t = isGEO ? calcTimer(pd.idrisStart) : null;
+  const coalsDone = isGEO ? COALITIONS.filter(c => (pd.coalitions||{})[c.id] >= 5).length : 0;
+  const delvesDone = isGEO ? DELVE_TITLES.filter(dt => (pd.delves||{})[dt.id]).length : 0;
+  const ml = pd.masterLevel || 0;
+  const gilCur = pd.gilCurrent || 0;
+  const gilTgt = pd.gilTarget || 0;
+  const gilPct = gilTgt > 0 ? Math.min(100, Math.round(gilCur / gilTgt * 100)) : 0;
+
+  const weekSteps = isGEO ? GEO_WEEK : COR_WEEK;
+  const weekDone = weekSteps.filter(ws => (pd.weekDone||{})[ws.id]).length;
+
+  const urgentEvs = EVENTS.filter(ev => daysLeft(ev.ends) <= 7);
+
+  // Profile-specific stat cards
+  const statCards = isGEO ? [
+    { label: 'Idris Timer', val: t.days + ' / 180', sub: t.remaining + 'd remaining', cls: 'orange' },
+    { label: 'Legend Ranks', val: coalsDone + ' / 6', sub: 'Coalitions at Legend', cls: 'cyan' },
+    { label: 'GEO Gear', val: Object.values(pd.geoGear||{}).filter(Boolean).length + ' / ' + Object.values(GEO_GEAR).flat().length, sub: 'Pieces obtained', cls: 'green' },
+    { label: 'Master Level', val: 'ML ' + ml, sub: ml >= 50 ? 'MAX' : 'Next: ' + (ML_MILESTONES.find(m => m.ml > ml)?.note || ''), cls: '' },
+  ] : [
+    { label: 'Naegling', val: 'DONE', sub: 'Savage Blade weapon', cls: 'green' },
+    { label: "Luzaf's Ring", val: (pd.corGear||{})['c_luzaf_ring'] ? 'DONE' : 'NEEDED', sub: 'Roll AoE x2', cls: (pd.corGear||{})['c_luzaf_ring'] ? 'green' : 'red' },
+    { label: 'Rolls Owned', val: Object.values(pd.rollsOwned||{}).filter(Boolean).length + ' / ' + COR_ROLLS.length, sub: 'Phantom Rolls', cls: 'cyan' },
+    { label: 'Master Level', val: 'ML ' + ml, sub: ml >= 50 ? 'MAX' : 'Next: ' + (ML_MILESTONES.find(m => m.ml > ml)?.note || ''), cls: '' },
+  ];
+
+  return e('div', null,
+    urgentEvs.length > 0 && e('div', {
+      style: { background: 'rgba(200,74,74,.1)', border: '1px solid var(--red-dim)', borderRadius: 4, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }
+    },
+      e('span', { style: { color: 'var(--red)', fontSize: 20 } }, '⚠'),
+      e('div', null,
+        e('div', { style: { color: 'var(--red)', fontWeight: 700, fontSize: 13 } }, 'URGENT: ' + urgentEvs.length + ' event' + (urgentEvs.length > 1 ? 's' : '') + ' ending soon'),
+        urgentEvs.map(ev => e('div', { key: ev.id, className: 'text-dim' }, ev.name + ' -- ' + daysLeft(ev.ends) + ' days left'))
+      )
+    ),
+    e('div', { className: 'stats-row section-gap' },
+      statCards.map((m, i) => e('div', { key: i, className: 'stat-card' },
+        e('div', { className: 'stat-label' }, m.label),
+        e('div', { className: 'stat-value ' + m.cls }, m.val),
+        e('div', { className: 'stat-sub' }, m.sub)
+      ))
+    ),
+    e('div', { className: 'grid-2 section-gap' },
+      e('div', { className: 'panel' },
+        isGEO ? e('div', null,
+          e('div', { className: 'panel-title' }, 'Idris Gate Progress'),
+          [
+            { label: 'Timer (' + t.days + ' / 180 days)', pct: t.pct, cls: 'bar-orange' },
+            { label: 'Bayld (' + (pd.bayld||0).toLocaleString() + ' / 13,099)', pct: Math.min(100, Math.round((pd.bayld||0)/13099*100)), cls: 'bar-cyan' },
+            { label: 'Plasm (' + (pd.plasm||0).toLocaleString() + ' / 2,500,000)', pct: Math.min(100, Math.round((pd.plasm||0)/2500000*100)), cls: 'bar-purple' },
+            { label: 'Coalition Ranks (' + coalsDone + ' / 6)', pct: Math.round(coalsDone/6*100), cls: 'bar-green' },
+            { label: 'Delve Titles (' + delvesDone + ' / 6)', pct: Math.round(delvesDone/6*100), cls: 'bar-gold' },
+          ].map((b, i) => e('div', { key: i, style: { marginBottom: 10 } },
+            e('div', { className: 'bl' }, e('span', null, b.label), e('span', null, b.pct + '%')),
+            e(PBar, { pct: b.pct, cls: b.cls })
+          ))
+        ) : e('div', null,
+          e('div', { className: 'panel-title' }, 'COR Progression'),
+          [
+            { label: 'Savage Blade Gear (' + Object.values(pd.corGear||{}).filter(Boolean).length + ' / ' + Object.values(COR_GEAR).flat().length + ')', pct: Math.round(Object.values(pd.corGear||{}).filter(Boolean).length / Object.values(COR_GEAR).flat().length * 100), cls: 'bar-cor' },
+            { label: 'Rolls Owned (' + Object.values(pd.rollsOwned||{}).filter(Boolean).length + ' / ' + COR_ROLLS.length + ')', pct: Math.round(Object.values(pd.rollsOwned||{}).filter(Boolean).length / COR_ROLLS.length * 100), cls: 'bar-cyan' },
+            { label: 'Shared Gear (' + Object.values(pd.sharedGear||{}).filter(Boolean).length + ' / ' + Object.values(SHARED_GEAR).flat().length + ')', pct: Math.round(Object.values(pd.sharedGear||{}).filter(Boolean).length / Object.values(SHARED_GEAR).flat().length * 100), cls: 'bar-green' },
+          ].map((b, i) => e('div', { key: i, style: { marginBottom: 10 } },
+            e('div', { className: 'bl' }, e('span', null, b.label), e('span', null, b.pct + '%')),
+            e(PBar, { pct: b.pct, cls: b.cls })
+          ))
+        )
+      ),
+      e('div', { className: 'panel' },
+        e('div', { className: 'panel-title' }, 'This Week -- ' + (isGEO ? 'GEO' : 'COR') + ' Action Plan'),
+        e('div', { className: 'text-dim', style: { marginBottom: 8 } }, weekDone + ' / ' + weekSteps.length + ' steps complete'),
+        weekSteps.map(ws => {
+          const done = (pd.weekDone||{})[ws.id] || false;
+          return e('div', { key: ws.id, className: 'week-step' + (done ? ' done' : ''), onClick: () => d({ t: 'WEEK', id: ws.id }) },
+            e(Checkbox, { checked: done }),
+            e('div', null,
+              e('div', { className: 'week-text' }, ws.text),
+              e('div', { className: 'week-why' }, ws.why)
+            )
+          );
+        }),
+        e('div', { className: 'panel-title', style: { marginTop: 16 } }, 'Gil Tracker'),
+        e('div', { className: 'num-row' },
+          e('span', { className: 'num-label' }, 'Current Gil'),
+          e('input', { type: 'number', className: 'num-input', value: gilCur, onChange: ev => d({ t: 'SET_P', k: 'gilCurrent', v: parseInt(ev.target.value)||0 }) })
+        ),
+        e('div', { className: 'num-row' },
+          e('span', { className: 'num-label' }, 'Target Gil'),
+          e('input', { type: 'number', className: 'num-input', value: gilTgt, onChange: ev => d({ t: 'SET_P', k: 'gilTarget', v: parseInt(ev.target.value)||0 }) })
+        ),
+        gilTgt > 0 && e('div', { style: { marginBottom: 8 } },
+          e('div', { className: 'bl' }, e('span', null, gilCur.toLocaleString() + ' / ' + gilTgt.toLocaleString()), e('span', null, gilPct + '%')),
+          e(PBar, { pct: gilPct, cls: 'bar-gil' })
+        ),
+        e('div', { style: { borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 8 } },
+          GIL_METHODS.map(gm => {
+            const done = (pd.gilDone||{})[gm.id] || false;
+            return e('div', { key: gm.id, className: 'gil-method' + (done ? ' done' : ''), onClick: () => d({ t: 'GIL', id: gm.id }) },
+              e(DotCheck, { done }),
+              e('div', { style: { flex: 1 } },
+                e('div', { className: 'gil-text' }, gm.text),
+                e('div', { className: 'gil-note' }, gm.note)
+              ),
+              e('span', { className: 'gil-est' }, gm.est),
+              e('span', { className: 'tier-tag tier-' + gm.tier }, 'T' + gm.tier)
+            );
+          })
+        )
+      )
+    ),
+    e('div', { className: 'panel section-gap' },
+      e('div', { className: 'panel-title' }, 'Master Level Progress'),
+      e('div', { className: 'num-row' },
+        e('span', { className: 'num-label' }, 'Current ML'),
+        e('input', { type: 'number', min: 0, max: 50, className: 'num-input', value: ml, onChange: ev => d({ t: 'SET_P', k: 'masterLevel', v: Math.min(50, Math.max(0, parseInt(ev.target.value)||0)) }) }),
+        e('span', { className: 'num-target' }, '/ 50')
+      ),
+      e(PBar, { pct: Math.round(ml/50*100), cls: 'bar-cyan', style: { marginBottom: 8 } }),
+      e('div', { className: 'ml-grid' },
+        ML_MILESTONES.map(m => e('div', { key: m.ml, className: 'ml-pip' + (ml >= m.ml ? ' done' : '') },
+          e('div', { className: 'ml-pip-num' }, 'ML' + m.ml),
+          e('div', { className: 'ml-pip-label' }, m.note)
+        ))
+      )
+    )
+  );
+}
+
+// ── EVENTS TAB ────────────────────────────────────────────────────────
+function EventsTab({ st, d }) {
+  return e('div', null,
+    e('div', { className: 'text-dim section-gap' }, 'Today: May 27, 2026. Shared across all profiles.'),
+    EVENTS.map(ev => {
+      const days = daysLeft(ev.ends);
+      const cls = days <= 7 ? 'urgent' : days <= 20 ? 'soon' : 'ok';
+      const done = ev.tasks.filter(t => st.eventDone?.[t.id]).length;
+      return e('div', { key: ev.id, className: 'event-card ' + (days <= 7 ? 'urgent' : days <= 20 ? 'active' : '') },
+        e('div', { className: 'event-header' },
+          e('div', null,
+            e('div', { className: 'event-name' }, ev.name),
+            e('div', { className: 'text-dim', style: { marginTop: 2 } }, 'Ends: ' + ev.ends + ' (' + days + ' days)  |  ' + done + ' / ' + ev.tasks.length + ' tasks')
+          ),
+          e('span', { className: 'event-countdown ' + cls }, days + ' DAYS')
+        ),
+        e('div', { className: 'event-desc' }, ev.desc),
+        e('div', { className: 'event-rec' }, '★ ' + ev.rec),
+        e('div', { className: 'event-tasks' },
+          ev.tasks.map(t => {
+            const td = st.eventDone?.[t.id] || false;
+            return e('div', { key: t.id, className: 'itin-task' + (td ? ' done' : ''), onClick: () => d({ t: 'EVENT_TASK', id: t.id }) },
+              e(DotCheck, { done: td }),
+              e('span', { className: 'itin-task-text' }, t.text)
+            );
+          })
+        )
+      );
+    })
+  );
+}
+
+// ── IDRIS TAB (Scribble only) ─────────────────────────────────────────
+function IdrisTab({ st, d }) {
+  const pd = st.scribble;
+  const t = calcTimer(pd.idrisStart);
+  const available = Object.values(pd.imprimaturs || {}).filter(Boolean).length;
+  return e('div', null,
+    e('div', { className: 'grid-2 section-gap' },
+      e('div', { className: 'panel' },
+        e('div', { className: 'panel-title' }, '6-Month Timer'),
+        e('div', { style: { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 } },
+          e('div', { style: { background: 'var(--bg-card)', border: '1px solid var(--border-bright)', borderRadius: 4, padding: '12px 18px', textAlign: 'center', minWidth: 140 } },
+            e('div', { className: 'text-dim' }, t.remaining > 0 ? 'Days Remaining' : 'COMPLETE'),
+            e('div', { style: { fontFamily: "'Cinzel',serif", fontSize: 32, color: 'var(--orange)', fontWeight: 700, lineHeight: 1.1 } }, t.remaining > 0 ? t.remaining : '✓'),
+            e('div', { className: 'text-dim', style: { marginTop: 4 } }, t.days + ' / 180 elapsed')
+          ),
+          e('div', { style: { flex: 1 } },
+            e('div', { className: 'bl' }, e('span', null, 'Progress'), e('span', null, t.pct + '%')),
+            e(PBar, { pct: t.pct, cls: 'bar-orange' }),
+            e('div', { className: 'text-dim', style: { marginTop: 6 } }, t.remaining > 0 ? 'Est. complete: Nov 22, 2026' : 'Timer expired -- forge Idris!')
+          )
+        ),
+        e('div', { style: { display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, borderTop: '1px solid var(--border)' } },
+          e('label', { className: 'text-dim' }, 'Timer Start:'),
+          e('input', { type: 'date', className: 'date-input', value: pd.idrisStart || '', onChange: ev => d({ t: 'SET_P', k: 'idrisStart', v: ev.target.value }) })
+        )
+      ),
+      e('div', { className: 'panel' },
+        e('div', { className: 'panel-title' }, 'Imprimatur Tracker'),
+        e('div', { className: 'text-dim', style: { marginBottom: 8 } }, 'Regen: 1 per 3 hrs  |  Cap: 15  |  Available: ' + available + '  |  Spent: ' + (15 - available)),
+        e('div', { className: 'imp-grid' },
+          Array.from({ length: 15 }, (_, i) => {
+            const av = pd.imprimaturs?.[i] || false;
+            return e('div', { key: i, className: 'imp-cell ' + (av ? 'available' : 'spent'), onClick: () => d({ t: 'IMP', i }) }, av ? '❆' : '✗');
+          })
+        ),
+        e(PBar, { pct: Math.round(available/15*100), cls: 'bar-cyan' }),
+        e('div', { className: 'text-dim', style: { marginTop: 6 } }, 'Click to toggle available / spent')
+      )
+    ),
+    e('div', { className: 'panel section-gap' },
+      e('div', { className: 'panel-title' }, 'Coalition Ranks -- Target: All Legend'),
+      e('table', { className: 'coal-table' },
+        e('thead', null, e('tr', null, ['Coalition', 'Rank', 'Progress', 'Status'].map(h => e('th', { key: h }, h)))),
+        e('tbody', null, COALITIONS.map(c => {
+          const rank = (pd.coalitions||{})[c.id] || 0;
+          const names = ['None', 'Initiate', 'Novice', 'Journeyman', 'Adept', 'Legend'];
+          return e('tr', { key: c.id },
+            e('td', null, c.name),
+            e('td', null, e('select', { className: 'rank-select', value: rank, onChange: ev => d({ t: 'COALITION', id: c.id, v: parseInt(ev.target.value) }) },
+              names.map((n, i) => e('option', { key: i, value: i }, i + ' - ' + n))
+            )),
+            e('td', null, Array.from({ length: 5 }, (_, i) => e('span', { key: i, className: 'rank-pip' + (i < rank ? (rank >= 5 ? ' legend' : ' filled') : '') }))),
+            e('td', null, e('span', { style: { fontSize: 12, color: rank >= 5 ? 'var(--gold)' : 'var(--text-muted)' } }, rank >= 5 ? 'LEGEND' : names[rank]))
+          );
+        }))
+      )
+    ),
+    e('div', { className: 'grid-2 section-gap' },
+      e('div', { className: 'panel' },
+        e('div', { className: 'panel-title' }, 'Resources'),
+        e('div', { className: 'num-row' },
+          e('span', { className: 'num-label' }, 'High-Purity Bayld'),
+          e('input', { type: 'number', className: 'num-input', value: pd.bayld||0, onChange: ev => d({ t: 'SET_P', k: 'bayld', v: parseInt(ev.target.value)||0 }) }),
+          e('span', { className: 'num-target' }, '/ 13,099')
+        ),
+        e(PBar, { pct: Math.min(100, Math.round((pd.bayld||0)/13099*100)), cls: 'bar-cyan', style: { marginBottom: 12 } }),
+        e('div', { className: 'num-row' },
+          e('span', { className: 'num-label' }, 'Mamuetum Plasm'),
+          e('input', { type: 'number', className: 'num-input', value: pd.plasm||0, onChange: ev => d({ t: 'SET_P', k: 'plasm', v: parseInt(ev.target.value)||0 }) }),
+          e('span', { className: 'num-target' }, '/ 2,500,000')
+        ),
+        e(PBar, { pct: Math.min(100, Math.round((pd.plasm||0)/2500000*100)), cls: 'bar-purple' })
+      ),
+      e('div', { className: 'panel' },
+        e('div', { className: 'panel-title' }, 'Delve Mega-Boss Titles'),
+        e('div', { className: 'checklist' },
+          DELVE_TITLES.map(dt => e(Chk, { key: dt.id, label: dt.name, note: dt.zone, done: (pd.delves||{})[dt.id]||false, onToggle: () => d({ t: 'DELVE', id: dt.id }) }))
+        )
+      )
+    )
+  );
+}
+
+// ── GEO TAB (Scribble only) ───────────────────────────────────────────
+function GeoTab({ st, d }) {
+  const pd = st.scribble;
+  const [sub, setSub] = useState('gear');
+  const geo = pd.geoSkills || { geo: 0, bell: 0 };
+  const combined = (geo.geo||0) + (geo.bell||0);
+  const pct = Math.min(100, Math.round(combined/900*100));
+  const gearTiers = [
+    { key: 'event', label: 'Event / Limbus Gear (Do First)', items: GEO_GEAR.event },
+    { key: 'mid', label: 'Mid-Tier', items: GEO_GEAR.mid },
+    { key: 'roe', label: 'RoE Intermediate 2 (Free Shortcuts)', items: GEO_GEAR.roe },
+    { key: 'max', label: 'Max Duration', items: GEO_GEAR.max },
+    { key: 'luopan', label: 'Luopan Survival + Nuke', items: GEO_GEAR.luopan },
+  ];
+  return e('div', null,
+    e('div', { className: 'panel section-gap' },
+      e('div', { className: 'panel-title' }, 'Combined Skill Target: 900'),
+      e('div', { className: 'bl' }, e('span', null, 'Combined: ' + combined + ' / 900'), e('span', null, pct + '%')),
+      e(PBar, { pct, cls: combined >= 900 ? 'bar-green' : 'bar-cyan', style: { marginBottom: 14 } }),
+      e('div', { className: 'grid-2' },
+        ['geo', 'bell'].map(k => e('div', { key: k },
+          e('div', { className: 'num-row' },
+            e('span', { className: 'num-label' }, k === 'geo' ? 'Geomancy Skill' : 'Handbell Skill'),
+            e('input', { type: 'number', className: 'num-input', value: geo[k]||0, onChange: ev => d({ t: 'GEO_SKILL', k, v: parseInt(ev.target.value)||0 }) }),
+            e('span', { className: 'num-target' }, '/ ~450')
+          ),
+          e(PBar, { pct: Math.min(100, Math.round(((geo[k]||0)/450)*100)), cls: k === 'geo' ? 'bar-cyan' : 'bar-purple' })
+        ))
+      )
+    ),
+    e('div', { className: 'panel' },
+      e('div', { className: 'sub-tabs' },
+        [{ id: 'gear', label: 'GEO Gear' }, { id: 'shared', label: 'Shared Gear' }].map(st =>
+          e('button', { key: st.id, className: 'sub-tab' + (sub === st.id ? ' active' : ''), onClick: () => setSub(st.id) }, st.label)
+        )
+      ),
+      sub === 'gear' && e('div', { className: 'scroll-list' },
+        gearTiers.map(t => e('div', { key: t.key },
+          e('div', { className: 'spell-section-label' }, t.label),
+          e('div', { className: 'checklist' },
+            t.items.map(g => e(Chk, {
+              key: g.id, label: g.name, note: g.note,
+              source: g.slot + (g.source ? ' -- ' + g.source : ''),
+              tier: g.tier, done: (pd.geoGear||{})[g.id]||false,
+              onToggle: () => d({ t: 'GEO_GEAR', id: g.id })
+            }))
+          )
+        ))
+      ),
+      sub === 'shared' && e('div', { className: 'scroll-list' },
+        e('div', { className: 'text-dim', style: { marginBottom: 10 } }, 'High-value gear shared across multiple jobs. Farming any of these advances your whole roster.'),
+        Object.entries(SHARED_GEAR).map(([section, items]) => e('div', { key: section },
+          e('div', { className: 'spell-section-label' }, section),
+          e('div', { className: 'checklist' },
+            items.map(g => e(Chk, {
+              key: g.id, label: g.name, note: g.note,
+              source: g.slot + ' -- ' + g.source,
+              tier: 'shared', jobs: g.jobs,
+              done: (pd.sharedGear||{})[g.id]||false,
+              onToggle: () => d({ t: 'SHARED_GEAR', id: g.id })
+            }))
+          )
+        ))
+      )
+    )
+  );
+}
+
+// ── SPELLS TAB (Scribble only) ────────────────────────────────────────
+function SpellsTab({ st, d }) {
+  const pd = st.scribble;
+  const spells = pd.spells || { GEO: {} };
+  const jobData = GEO_SPELLS;
+  const total = Object.values(jobData).flat().length;
+  const owned = Object.values(jobData).flat().filter(sp => spells.GEO?.[sp.id]).length;
+  return e('div', null,
+    e('div', { className: 'panel' },
+      e('div', { className: 'flex-row', style: { marginBottom: 12 } },
+        e('div', { className: 'panel-title', style: { margin: 0, flex: 1 } }, 'GEO Spell Library'),
+        e('span', { className: 'text-dim' }, owned + ' / ' + total + ' owned')
+      ),
+      e(PBar, { pct: total > 0 ? Math.round(owned/total*100) : 0, cls: 'bar-cyan', style: { marginBottom: 14 } }),
+      e('div', { className: 'scroll-list', style: { maxHeight: 500 } },
+        Object.entries(jobData).map(([section, spells_list]) => e('div', { key: section },
+          e('div', { className: 'spell-section-label' }, section),
+          e('div', { className: 'spell-grid' },
+            spells_list.map(sp => {
+              const own = spells.GEO?.[sp.id] || false;
+              return e('div', { key: sp.id, className: 'spell-item' + (own ? ' owned' : ''), onClick: () => d({ t: 'SPELL', job: 'GEO', id: sp.id }) },
+                e('div', { className: 'spell-dot', style: { background: own ? 'var(--green)' : 'transparent', borderColor: own ? 'var(--green)' : 'var(--cyan)' } }),
+                e('span', { className: 'spell-name' }, sp.name),
+                e('span', { className: 'spell-lvl' }, 'L' + sp.lvl + ' -- ' + sp.note)
+              );
+            })
+          )
+        ))
+      )
+    )
+  );
+}
+
+// ── COR TRACKER (Ragelog only) ────────────────────────────────────────
+function CorTab({ st, d }) {
+  const pd = st.ragelog;
+  const [sub, setSub] = useState('savage');
+  const subTabs = [
+    { id: 'savage', label: 'Savage Blade' },
+    { id: 'leaden', label: 'Leaden Salute' },
+    { id: 'phantom', label: 'Phantom Roll' },
+    { id: 'tp', label: 'TP Set' },
+    { id: 'shared', label: 'Shared Gear' },
+  ];
+  const currentItems = sub === 'shared' ? null : COR_GEAR[sub === 'phantom' ? 'phantom_roll' : sub];
+
+  return e('div', null,
+    e('div', { className: 'panel' },
+      e('div', { className: 'sub-tabs' },
+        subTabs.map(st => e('button', { key: st.id, className: 'sub-tab' + (sub === st.id ? ' active' : ''), onClick: () => setSub(st.id) }, st.label))
+      ),
+      sub !== 'shared' && currentItems && e('div', { className: 'scroll-list' },
+        e('div', { className: 'text-dim', style: { marginBottom: 10 } },
+          sub === 'savage' ? 'Savage Blade WS set. Naegling is your core weapon -- build around it.' :
+          sub === 'leaden' ? "Leaden Salute magical WS. Requires Bronze Bullets. Luzaf's Ring is the highest-priority piece here." :
+          sub === 'phantom' ? "Phantom Roll buffing set. Navarch's Relic AF directly enhances specific rolls." :
+          'Ranged TP building set between weapon skills.'
+        ),
+        e('div', { className: 'checklist' },
+          currentItems.map(g => e(Chk, {
+            key: g.id, label: g.name, note: g.note,
+            source: g.slot + ' -- ' + g.source,
+            tier: g.tier, done: (pd.corGear||{})[g.id]||false,
+            onToggle: () => d({ t: 'COR_GEAR', id: g.id })
+          }))
+        )
+      ),
+      sub === 'shared' && e('div', { className: 'scroll-list' },
+        e('div', { className: 'text-dim', style: { marginBottom: 10 } }, 'High-value gear shared across multiple jobs.'),
+        Object.entries(SHARED_GEAR).map(([section, items]) => e('div', { key: section },
+          e('div', { className: 'spell-section-label' }, section),
+          e('div', { className: 'checklist' },
+            items.map(g => e(Chk, {
+              key: g.id, label: g.name, note: g.note,
+              source: g.slot + ' -- ' + g.source,
+              tier: 'shared', jobs: g.jobs,
+              done: (pd.sharedGear||{})[g.id]||false,
+              onToggle: () => d({ t: 'SHARED_GEAR', id: g.id })
+            }))
+          )
+        ))
+      )
+    )
+  );
+}
+
+// ── ROLLS TAB (Ragelog only) ──────────────────────────────────────────
+function RollsTab({ st, d }) {
+  const pd = st.ragelog;
+  const owned = COR_ROLLS.filter(r => (pd.rollsOwned||{})[r.id]).length;
+  return e('div', null,
+    e('div', { className: 'panel' },
+      e('div', { className: 'flex-row', style: { marginBottom: 12 } },
+        e('div', { className: 'panel-title', style: { margin: 0, flex: 1 } }, 'Phantom Roll Library'),
+        e('span', { className: 'text-dim' }, owned + ' / ' + COR_ROLLS.length + ' rolls owned')
+      ),
+      e('div', { className: 'text-dim', style: { marginBottom: 12 } }, 'Click to mark owned. Lucky / Unlucky numbers shown for merit planning.'),
+      e(PBar, { pct: Math.round(owned/COR_ROLLS.length*100), cls: 'bar-cor', style: { marginBottom: 14 } }),
+      e('div', { className: 'roll-grid' },
+        COR_ROLLS.map(r => {
+          const own = (pd.rollsOwned||{})[r.id] || false;
+          return e('div', { key: r.id, className: 'roll-item' + (own ? ' owned' : ''), onClick: () => d({ t: 'ROLL', id: r.id }) },
+            e('div', { className: 'roll-dot' }),
+            e('div', { style: { flex: 1 } },
+              e('div', { className: 'roll-name' }, r.name),
+              e('div', { className: 'roll-note' }, r.note)
+            ),
+            e('div', { style: { textAlign: 'right', flexShrink: 0 } },
+              e('div', { className: 'roll-num' }, '✓' + r.lucky + '  ✗' + r.unlucky)
+            )
+          );
+        })
+      )
+    )
+  );
+}
+
+// ── ITINERARY TAB ─────────────────────────────────────────────────────
+function ItineraryTab({ st, d }) {
+  const allTasks = ITINERARY.flatMap(b => b.tasks);
+  const doneCt = allTasks.filter(t => st.dailyDone[t.id]).length;
+  const labels = { must: 'MUST', should: 'SHOULD', can: 'CAN' };
+  return e('div', null,
+    e('div', { className: 'flex-row section-gap', style: { justifyContent: 'space-between' } },
+      e('div', null,
+        e('div', { className: 'text-dim' }, 'Today: ' + new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })),
+        e('div', { className: 'text-dim', style: { marginTop: 2 } }, doneCt + ' / ' + allTasks.length + ' tasks complete -- shared across profiles')
+      ),
+      e('button', { className: 'btn-ghost', onClick: () => d({ t: 'RESET_DAILY' }) }, 'Reset Daily')
+    ),
+    e(PBar, { pct: Math.round(doneCt/allTasks.length*100), cls: 'bar-green', style: { marginBottom: 14 } }),
+    ITINERARY.map(block => e('div', { key: block.time + block.title, className: 'itin-block' },
+      e('div', { className: 'itin-header' },
+        e('span', { className: 'itin-time' }, block.time),
+        e('span', { className: 'itin-title' }, block.title),
+        e('span', { className: 'itin-where' }, block.where)
+      ),
+      e('div', { className: 'itin-tasks' },
+        block.tasks.map(t => {
+          const done = st.dailyDone[t.id] || false;
+          return e('div', { key: t.id, className: 'itin-task' + (done ? ' done' : ''), onClick: () => d({ t: 'DAILY', id: t.id }) },
+            e(DotCheck, { done }),
+            e('span', { className: 'itin-task-text' }, t.text),
+            e('span', { className: 'itin-priority p-' + t.priority }, labels[t.priority])
+          );
+        })
+      )
+    ))
+  );
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────────────
+function App() {
+  const [st, setSt] = useState(() => load() || INIT);
+  const [tab, setTab] = useState('overview');
+  const [saved, setSaved] = useState('');
+  const dispatch = useCallback(a => setSt(s => reducer(s, a)), []);
+
+  useEffect(() => {
+    const themeObj = THEMES.find(t => t.id === (st.theme || 'dark'));
+    document.body.className = themeObj ? themeObj.cls : '';
+  }, [st.theme]);
+
+  // When switching profiles, reset to overview if current tab doesn't exist on new profile
+  function switchProfile(pid) {
+    dispatch({ t: 'PROFILE', v: pid });
+    const profileTabs = PROFILES[pid].tabs;
+    if (!profileTabs.includes(tab)) setTab('overview');
+  }
+
+  function doSave() { persist(st); setSaved('Saved!'); setTimeout(() => setSaved(''), 2000); }
+
+  const p = st.activeProfile || 'scribble';
+  const profile = PROFILES[p];
+  const tabs = profile.tabs;
+  const urgentCount = EVENTS.filter(ev => daysLeft(ev.ends) <= 7).length;
+
+  const tp = { st, d: dispatch };
+
+  return e('div', { className: 'app' },
+    e('div', { className: 'header' },
+      e('div', { className: 'header-left' },
+        e('h1', null, 'FFXI PROGRESSION TRACKER'),
+        e('p', null, 'Dual Profile -- 2026 Meta')
+      ),
+      e('div', { className: 'header-right' },
+        // Profile switcher
+        e('div', { className: 'profile-switcher' },
+          Object.entries(PROFILES).map(([pid, prof]) =>
+            e('button', {
+              key: pid,
+              className: 'profile-btn' + (p === pid ? ' active' : ''),
+              onClick: () => switchProfile(pid)
+            },
+              prof.name,
+              e('span', { className: 'profile-job', style: { color: p === pid ? prof.color : '' } }, prof.job)
+            )
+          )
+        ),
+        // Theme switcher
+        e('div', { className: 'theme-switcher' },
+          e('span', { className: 'theme-label' }, 'Theme'),
+          THEMES.map(t => e('button', {
+            key: t.id,
+            className: 'theme-btn ' + t.btnCls + (st.theme === t.id ? ' active' : ''),
+            title: t.label,
+            onClick: () => dispatch({ t: 'THEME', v: t.id })
+          }))
+        )
+      )
+    ),
+    // Nav tabs -- profile-specific
+    e('div', { className: 'nav-tabs' },
+      tabs.map(tid => e('button', {
+        key: tid,
+        className: 'nav-tab' + (tab === tid ? ' active' : '') + (tid === 'ffxiv' ? ' disabled' : '') + (tid === 'events' && urgentCount > 0 ? ' urgent' : ''),
+        onClick: () => tid !== 'ffxiv' && setTab(tid)
+      },
+        TAB_LABELS[tid],
+        tid === 'events' && urgentCount > 0 && e('span', { style: { marginLeft: 5, fontSize: 9, background: 'var(--red)', borderRadius: '50%', padding: '1px 5px', color: '#fff', fontWeight: 700 } }, urgentCount),
+        tid === 'ffxiv' && e('span', { className: 'tag-cs', style: { marginLeft: 5 } }, 'SOON')
+      ))
+    ),
+    // Tab content
+    tab === 'overview' && e(OverviewTab, tp),
+    tab === 'events' && e(EventsTab, tp),
+    tab === 'idris' && e(IdrisTab, tp),
+    tab === 'geo' && e(GeoTab, tp),
+    tab === 'spells' && e(SpellsTab, tp),
+    tab === 'cor' && e(CorTab, tp),
+    tab === 'rolls' && e(RollsTab, tp),
+    tab === 'itinerary' && e(ItineraryTab, tp),
+    e('div', { className: 'save-bar' },
+      saved ? e('span', { className: 'save-status' }, saved) : e('span', null, 'Click Save to persist'),
+      e('button', { className: 'save-btn', onClick: doSave }, 'Save')
+    )
+  );
+}
+
+ReactDOM.render(e(App), document.getElementById('root'));
+
+</script>
+</body>
+</html>
